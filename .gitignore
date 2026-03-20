@@ -39,3 +39,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# large media files (served via Mux)
+public/*.mp4
+public/*.mov
+
+# original high-res images (replaced by WebP)
+public/solklart-installation-skargard.jpg
+"public/mika-wegelius-sgGtWaQz_ro-unsplash.jpg"
+public/IMG_20201016_172739.jpg
+public/sungrow-SG8.0-inverter

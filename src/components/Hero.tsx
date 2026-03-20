@@ -6,7 +6,7 @@ export default function Hero() {
   const { hero } = homeContent;
 
   return (
-    <section className="relative min-h-screen flex items-center pt-20 pb-32">
+    <section className="relative min-h-screen flex items-center pt-20 pb-72 sm:pb-32">
       {/* Background video */}
       <div className="absolute inset-0 z-0">
         <div

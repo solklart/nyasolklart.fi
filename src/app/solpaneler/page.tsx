@@ -171,17 +171,22 @@ export default function SolpanelerPage() {
               <p className="text-lg text-gray-600 leading-relaxed mb-8">
                 AIKO är klassad som Tier 1-tillverkare av BloombergNEF. Det är en panel byggd för att hålla – och leverera – i decennier.
               </p>
-              <a
-                href="/aiko-neostar-datablad.pdf"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-[#f26621] font-semibold hover:underline"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                Ladda ner datablad (PDF)
-              </a>
+              <div className="flex flex-wrap gap-4">
+                <Link href="/blogg/aiko-460w-mer-el-per-kvadratmeter" className="btn-gradient inline-flex rounded-full px-6 py-3 text-sm font-semibold text-white">
+                  Läs mer om AIKO
+                </Link>
+                <a
+                  href="/aiko-neostar-datablad.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 text-[#f26621] font-semibold hover:underline text-sm"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Datablad (PDF)
+                </a>
+              </div>
             </div>
             <div className="relative">
               <div className="relative h-[480px] rounded-3xl overflow-hidden shadow-2xl bg-gray-900">
