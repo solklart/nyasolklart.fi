@@ -1,5 +1,6 @@
 import Hero from "@/components/Hero";
 import Stats from "@/components/Stats";
+import SolarCalculator from "@/components/SolarCalculator";
 import ValueProposition from "@/components/ValueProposition";
 import EnergyPlatform from "@/components/EnergyPlatform";
 import Testimonials from "@/components/Testimonials";
@@ -12,6 +13,7 @@ export default function Home() {
       <Hero />
       <div className="h-40 bg-gray-50"></div>
       <Stats />
+      <SolarCalculator />
       <ValueProposition />
       <EnergyPlatform />
       <Testimonials />
