@@ -12,6 +12,7 @@
     "@mux/mux-node": "^12.8.1",
     "@mux/mux-player-react": "^3.11.5",
     "@react-google-maps/api": "^2.20.8",
+    "geotiff": "^3.0.5",
     "next": "16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3"

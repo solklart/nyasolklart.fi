@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback } from 'react';
-import { useJsApiLoader, GoogleMap, Autocomplete } from '@react-google-maps/api';
+import { useJsApiLoader, GoogleMap, Autocomplete, GroundOverlay } from '@react-google-maps/api';
 import Link from 'next/link';
 
 const LIBRARIES: ['places'] = ['places'];
@@ -16,6 +16,11 @@ interface RoofSegmentSummary {
   segmentIndex: number;
 }
 
+interface Heatmap {
+  png: string;
+  bounds: { north: number; south: number; east: number; west: number };
+}
+
 interface SolarResult {
   bestConfig: {
     panelsCount: number;
@@ -23,6 +28,7 @@ interface SolarResult {
     roofSegmentSummaries: RoofSegmentSummary[];
   };
   peakPowerKw: number;
+  heatmap: Heatmap | null;
   pvgis: {
     outputs: {
       totals: { fixed: { E_y: number } };
@@ -47,9 +53,11 @@ export default function SolarCalculator() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<SolarResult | null>(null);
   const [error, setError] = useState('');
+  const [showHeatmap, setShowHeatmap] = useState(true);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
-  const onPlaceChanged = useCallback(async () => {
+  const analyze = useCallback(async () => {
     const place = autocompleteRef.current?.getPlace();
     if (!place?.geometry?.location) return;
 
@@ -77,6 +85,17 @@ export default function SolarCalculator() {
     }
   }, []);
 
+  const onPlaceChanged = useCallback(() => {
+    analyze();
+  }, [analyze]);
+
+  const onKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter') analyze();
+    },
+    [analyze]
+  );
+
   const annualKwh = result?.pvgis?.outputs.totals.fixed.E_y ?? result?.bestConfig.yearlyEnergyDcKwh ?? 0;
   const annualSavings = Math.round(annualKwh * ELECTRICITY_PRICE_EUR);
   const co2Kg = result
@@ -84,9 +103,7 @@ export default function SolarCalculator() {
     : 0;
   const monthlyData = result?.pvgis?.outputs.monthly.fixed ?? [];
   const maxMonthly = Math.max(...monthlyData.map((m) => m.E_m), 1);
-  const panelWp = result
-    ? Math.round(result.solar.solarPotential.panelCapacityWatts)
-    : 0;
+  const panelWp = result ? Math.round(result.solar.solarPotential.panelCapacityWatts) : 0;
 
   return (
     <section className="py-24 bg-gray-50">
@@ -121,12 +138,18 @@ export default function SolarCalculator() {
                   </svg>
                 </div>
                 <input
+                  ref={inputRef}
                   type="text"
                   placeholder="Ange din adress i Finland..."
                   className="flex-1 py-3 bg-transparent text-base text-gray-700 placeholder-gray-400 focus:outline-none"
+                  onKeyDown={onKeyDown}
                 />
-                <button className="btn-gradient rounded-full px-7 py-3 text-sm font-semibold text-white whitespace-nowrap">
-                  Analysera
+                <button
+                  onClick={analyze}
+                  disabled={loading}
+                  className="btn-gradient rounded-full px-7 py-3 text-sm font-semibold text-white whitespace-nowrap disabled:opacity-60"
+                >
+                  {loading ? 'Analyserar...' : 'Analysera'}
                 </button>
               </div>
             </Autocomplete>
@@ -154,8 +177,8 @@ export default function SolarCalculator() {
         {result && position && !loading && (
           <div className="space-y-6 animate-fade-in">
 
-            {/* Satellite map */}
-            <div className="rounded-3xl overflow-hidden shadow-2xl" style={{ height: '380px' }}>
+            {/* Satellite map with heatmap overlay */}
+            <div className="relative rounded-3xl overflow-hidden shadow-2xl" style={{ height: '420px' }}>
               <GoogleMap
                 mapContainerStyle={{ width: '100%', height: '100%' }}
                 center={position}
@@ -168,7 +191,47 @@ export default function SolarCalculator() {
                   tilt: 0,
                   rotateControl: false,
                 }}
-              />
+              >
+                {result.heatmap && showHeatmap && (
+                  <GroundOverlay
+                    url={`data:image/png;base64,${result.heatmap.png}`}
+                    bounds={result.heatmap.bounds}
+                    opacity={0.75}
+                  />
+                )}
+              </GoogleMap>
+
+              {/* Heatmap toggle */}
+              {result.heatmap && (
+                <div className="absolute bottom-4 left-4 flex items-center gap-3">
+                  <button
+                    onClick={() => setShowHeatmap((v) => !v)}
+                    className="bg-white/90 backdrop-blur rounded-full px-4 py-2 text-xs font-semibold text-gray-700 shadow-md flex items-center gap-2"
+                  >
+                    <span
+                      className="w-3 h-3 rounded-sm"
+                      style={{
+                        background: showHeatmap
+                          ? 'linear-gradient(to right, #3b82f6, #22c55e, #facc15, #ef4444)'
+                          : '#d1d5db',
+                      }}
+                    />
+                    {showHeatmap ? 'Solpotential på' : 'Solpotential av'}
+                  </button>
+
+                  {/* Color scale legend */}
+                  {showHeatmap && (
+                    <div className="bg-white/90 backdrop-blur rounded-full px-3 py-2 shadow-md flex items-center gap-2">
+                      <span className="text-[10px] text-gray-500">Låg</span>
+                      <div
+                        className="w-20 h-2.5 rounded-full"
+                        style={{ background: 'linear-gradient(to right, #3b82f6, #22c55e, #facc15, #ef4444)' }}
+                      />
+                      <span className="text-[10px] text-gray-500">Hög</span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Stat cards */}
@@ -195,7 +258,7 @@ export default function SolarCalculator() {
               <StatCard
                 label="Uppskattad besparing"
                 value={annualSavings.toLocaleString('sv-FI')}
-                unit={`€/år`}
+                unit="€/år"
                 icon="euro"
                 note={`vid ${(ELECTRICITY_PRICE_EUR * 100).toFixed(0)} ct/kWh`}
               />
@@ -255,17 +318,9 @@ export default function SolarCalculator() {
 }
 
 function StatCard({
-  label,
-  value,
-  unit,
-  icon,
-  note,
+  label, value, unit, icon, note,
 }: {
-  label: string;
-  value: string;
-  unit: string;
-  icon: string;
-  note?: string;
+  label: string; value: string; unit: string; icon: string; note?: string;
 }) {
   return (
     <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 card-hover">
@@ -286,29 +341,13 @@ function StatIcon({ name }: { name: string }) {
   const cls = 'w-5 h-5 text-[#f26621]';
   switch (name) {
     case 'panel':
-      return (
-        <svg className={cls} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-        </svg>
-      );
+      return <svg className={cls} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>;
     case 'bolt':
-      return (
-        <svg className={cls} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-        </svg>
-      );
+      return <svg className={cls} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>;
     case 'sun':
-      return (
-        <svg className={cls} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-        </svg>
-      );
+      return <svg className={cls} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>;
     case 'euro':
-      return (
-        <svg className={cls} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.121 15.536c-1.171 1.952-3.07 1.952-4.242 0-1.172-1.953-1.172-5.119 0-7.072 1.171-1.952 3.07-1.952 4.242 0M8 10.5h4m-4 3h4m9-1.5a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      );
+      return <svg className={cls} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.121 15.536c-1.171 1.952-3.07 1.952-4.242 0-1.172-1.953-1.172-5.119 0-7.072 1.171-1.952 3.07-1.952 4.242 0M8 10.5h4m-4 3h4m9-1.5a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
     default:
       return null;
   }
